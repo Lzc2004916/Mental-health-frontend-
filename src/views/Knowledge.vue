@@ -37,7 +37,8 @@ const formItem = [
     }
 ]
 const handleSearch = (formData)=>{
-    console.log(formData)
+  console.log(formData);
+  
 }
 </script>
 
