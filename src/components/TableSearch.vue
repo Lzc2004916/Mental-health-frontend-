@@ -1,5 +1,5 @@
 <template>
-  <el-form :model="formData">
+  <el-form ref="ruleFormRef" :model="formData">
     <el-row>
   <template v-for="item in props.formItem" :key="item.props">
     <el-col v-bind="{xs:24, sm:12, md:8, lg:6, xl:6, xxl:6}">
@@ -21,7 +21,7 @@
     </el-row>
    <el-row>
     <el-button type="primary" size="default" @click="handleSearch">查询</el-button>
-    <el-button size="default" @click="handleReset">重置</el-button>
+    <el-button size="default" @click="handleReset(ruleFormRef)">重置</el-button>
    </el-row>
   </el-form>
 </template>
@@ -41,12 +41,18 @@ const isComp = (comp)=>{
       select: 'el-select'
     }[comp]
 }
+const ruleFormRef = ref()
 const formData = reactive({})
 
 const handleSearch = ()=>{
   emit('search', formData)
 }
-const handleReset = ()=>{
+const handleReset = (ruleFormRef)=>{
+    if(!ruleFormRef)return
+    if(ruleFormRef){
+        ruleFormRef.resetFields()
+        emit('search', formData)
+    }
 }
 </script>
 
