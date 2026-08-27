@@ -55,21 +55,19 @@ const rules = reactive({
 })
 const submitForm = async(formEl)=>{
     if(!formEl) return
-    await formEl.validate((valid,fields)=>{
+    await formEl.validate(async (valid,fields)=>{
         if(valid){
-            login(formData).then(data=>{
-                if(!data.token){
-                    return console.error('登录失败')
-                }
-                localStorage.setItem('token',data.token)
-                localStorage.setItem('userInfo',JSON.stringify(data.userInfo))
-                //根据用户角色决定跳转路径
-                if(data.userInfo.userType === 2){
-                    router.push('/back/dashboard')
-            }else{
-                
-            }
-            })
+           const data = await login(formData)
+           if(!data.token){
+                return console.error('登录失败')
+           }
+           localStorage.setItem('token',data.token)
+           localStorage.setItem('userInfo',JSON.stringify(data.userInfo))
+           //根据用户角色决定跳转路径
+           if(data.userInfo.userType === 2){
+                router.push('/back/dashboard')
+           }else{
+           }
         }
     })
 }
