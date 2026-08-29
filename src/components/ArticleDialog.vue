@@ -4,7 +4,7 @@
     v-model="dialogVisible"
     width="50%"
   >
-  <el-form ref="ruleFormRef" :model="formData" :rules="rules">
+  <el-form ref="formRef" :model="formData" :rules="rules">
     <el-form-item label="文章标题" prop="title">
       <el-input v-model="formData.title" placeholder="请输入文章标题" :maxlength="200" show-word-limit></el-input>
     </el-form-item>
@@ -36,8 +36,8 @@
         </div>
         <img v-else :src="imgUrl" class="cover-image" alt="封面图片">
         </el-upload>
-        <div v-if="imgUrl" class="cover-remo" @click="removeCover">
-            <el-button type="danger" size="mini" @click="handleRemove">移除封面</el-button>
+        <div v-if="imgUrl" class="cover-remo">
+            <el-button type="danger" size="small" @click="handleRemove">移除封面</el-button>
         </div>
      </div>
     </el-form-item>
@@ -45,20 +45,29 @@
       <RichTextEditor 
       v-model="formData.content"
       placeholder = "请输入文章内容，支持富文本格式"
-      maxCharCount="5000"
+      :maxCharCount="5000"
       @Change="handelContentChange"
       @created="handleEditorCreated"
       min-height="400px"
       ></RichTextEditor>
     </el-form-item>
   </el-form>
+  <div v-if="btnPreview">
+    <h3>内容预览</h3>
+    <div v-html="formData.content"></div>
+  </div>
+  <template #footer>
+    <el-button type="primary" @click="btnPreview = !btnPreview">{{ btnPreview ? '隐藏预览' : '预览效果' }}</el-button>
+    <el-button type="danger" @click="handleCancel">取消</el-button>
+    <el-button type="primary" @click="handleSubmit" :loading="loading">创建文章</el-button>
+  </template>
   </el-dialog>
 </template>
 
 <script setup>
-import { computed,reactive,ref } from "vue"
+import { computed,reactive,ref,nextTick } from "vue"
 import { ElMessage } from 'element-plus'
-import { uploadFile } from "@/api/admin";
+import { uploadFile,createArticle } from "@/api/admin";
 import {fileBaseUrl} from "@/config/index.js"
 import RichTextEditor from "@/components/RichTextEditor.vue"
 const props = defineProps({
@@ -69,9 +78,13 @@ const props = defineProps({
     categories: {
         type: Array,
         default: ()=>[]
+    },
+    success: {
+        type: Function,
+        default: ()=>{}
     }
 })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue','success'])
 const dialogVisible = computed({
     get() {
         return props.modelValue
@@ -131,10 +144,40 @@ const handleRemove = ()=>{
     imgUrl.value = ''
     formData.coverImage = ''
 }
-const handelContentChange = ()=>{
+//富文本
+const handelContentChange = (data)=>{
+    formData.content = data.html;
+}
+const editorInstance = ref(null)
+const handleEditorCreated = (editor)=>{
+    editorInstance.value = editor
+    if(formData.content && editor){
+        nextTick(()=>{
+        editor.setHtml(formData.content)
+        })
+    }
+}
+const formRef = ref()
+const btnPreview = ref(false);
+const loading = ref(false)
+const handleCancel = ()=>{
     
 }
-const handleEditorCreated = (editor)=>{
+const handleSubmit = ()=>{
+    formRef.value.validate((valid,fields)=>{
+        if(valid){
+            loading.value = true
+            const submitData = {
+                ...formData,
+                tags: formData.tagArray.join(',')
+            }
+            delete submitData.tagArray
+            createArticle(submitData).then(res=>{
+                loading.value = false
+                emit('success')
+            })
+        }
+    })
 }
 </script>
 

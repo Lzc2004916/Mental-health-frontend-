@@ -12,9 +12,9 @@
           <template #default="scope">
             <div style="display: flex;align-items: center;">
               <el-icon>
-                <timer  />
-                <span>{{scope.row.title}}</span>
+                <document  />
               </el-icon>
+                <span>{{scope.row.title}}</span>
             </div>
           </template>
         </el-table-column>
@@ -22,15 +22,15 @@
           <template #default="scope">
             <div style="display: flex;align-items: center;">
               <el-icon>
-                <folder  />
-                <span>{{categoryMap[scope.row.categoryId]}}</span>
+                <collection  />
               </el-icon>
+              <span>{{categoryMap[scope.row.categoryId]}}</span>
             </div>
           </template>
         </el-table-column>
         <el-table-column prop="authorName"  label="作者" width="150" />
         <el-table-column prop="readCount"  label="阅读量" width="150" />
-        <el-table-column prop="publishedAt"  label="发布时间" width="150" />
+        <el-table-column prop="updatedAt"  label="发布时间" width="150" />
         <el-table-column  label="操作" width="240" fixed="right">
           <template #default="scope">
            <el-button type="primary" text @click="">编辑</el-button>
@@ -47,7 +47,7 @@
          :total="pagination.total" 
          @change="handleChange"
          />
-       <ArticleDialog v-model:modelValue="dialogVisible" :categories="categories" />
+       <ArticleDialog v-model:modelValue="dialogVisible" :categories="categories" @success="handleSuccess" />
   </div>
 </template>
 
@@ -125,6 +125,8 @@ onMounted(async()=>{
 const handleChange = (val)=>{
     pagination.currentPage = val
     handleSearch()
+}
+const handleSuccess = ()=>{
 }
 </script>
 
