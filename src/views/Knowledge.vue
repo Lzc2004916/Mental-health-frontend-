@@ -2,7 +2,7 @@
   <div class="content-container">
     <PageHead>
       <template #buttons>
-        <el-button type="primary" size="default" @click="dialogVisible = true">新增知识文章</el-button>
+        <el-button type="primary" size="default" @click="handleEdit(null)">新增知识文章</el-button>
       </template>
     </PageHead>
     <TableSearch :formItem="formItem" @search="handleSearch">
@@ -33,10 +33,10 @@
         <el-table-column prop="updatedAt"  label="发布时间" width="150" />
         <el-table-column  label="操作" width="240" fixed="right">
           <template #default="scope">
-           <el-button type="primary" text @click="">编辑</el-button>
-           <el-button v-if="scope.row.status == 0 || scope.row.status == 2" type="success" text @click="">发布</el-button>
-           <el-button v-if="scope.row.status == 1" type="warning" text @click="">下线</el-button>
-           <el-button text @click="" type="danger">删除</el-button>
+           <el-button type="primary" text @click="handleEdit(scope.row)">编辑</el-button>
+           <el-button @click="handlePublish(scope.row)" v-if="scope.row.status == 0 || scope.row.status == 2" type="success" text >发布</el-button>
+           <el-button @click="handleUnpublish(scope.row)" v-if="scope.row.status == 1" type="warning" text >下线</el-button>
+           <el-button text @click="handleDelete(scope.row)" type="danger">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -47,7 +47,7 @@
          :total="pagination.total" 
          @change="handleChange"
          />
-       <ArticleDialog v-model:modelValue="dialogVisible" :categories="categories" @success="handleSuccess" />
+       <ArticleDialog v-model:modelValue="dialogVisible" :article = "currentArticle" :categories="categories" @success="handleSuccess" />
   </div>
 </template>
 
@@ -55,8 +55,9 @@
 import { onMounted,reactive,ref } from "vue"
 import PageHead from '@/components/PageHead.vue'
 import TableSearch from '@/components/TableSearch.vue';
-import { categoryTree,articlePage } from "@/api/admin";
+import { categoryTree,articlePage, getArticleDetail,changeArtocleStatus,deleteArticle } from "@/api/admin";
 import ArticleDialog from "@/components/ArticleDialog.vue";
+import { ElMessageBox,ElMessage } from "element-plus";
 const formItem = [
     {
         comp: 'input',
@@ -106,6 +107,7 @@ const handleSearch = async(formData)=>{
   }
     const {records,total} = await articlePage(params)
     tableData.value = records
+    pagination.total = total
 }
 const categoryMap = reactive({})
 const categories = ref([])
@@ -127,6 +129,58 @@ const handleChange = (val)=>{
     handleSearch()
 }
 const handleSuccess = ()=>{
+    dialogVisible.value = false
+    handleSearch()
+}
+const currentArticle = ref(null)
+const handleEdit = async (row)=>{
+  if (!row?.id) {
+  currentArticle.value = null
+  dialogVisible.value = true
+  }else{
+  const data = await getArticleDetail(row.id)
+  currentArticle.value = data
+  dialogVisible.value = true
+  }
+}
+const handlePublish = (row)=>{
+  ElMessageBox.confirm(`确认发布文章${row.title}吗？`, {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    // 发布文章
+    changeArtocleStatus(row.id,{status:1}).then(res=>{
+        ElMessage.success('发布成功')
+        handleSearch()
+    })
+  })
+}
+const handleUnpublish = (row)=>{
+  ElMessageBox.confirm(`确认下线文章${row.title}吗？`, {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    // 下线文章
+    changeArtocleStatus(row.id,{status:2}).then(res=>{
+        ElMessage.info('下线成功')
+        handleSearch()
+    })
+  })
+}
+const handleDelete = (row)=>{
+  ElMessageBox.confirm(`确认删除文章${row.title}吗？`, {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    // 删除文章
+    deleteArticle(row.id).then(res=>{
+        ElMessage.success('删除成功')
+        handleSearch()
+    })
+  })
 }
 </script>
 

@@ -1,6 +1,6 @@
 <template>
   <el-dialog
-    title="文章详情"
+    :title="isEdit ? '编辑文章' : '新增文章'"
     v-model="dialogVisible"
     width="50%"
   >
@@ -58,16 +58,16 @@
   </div>
   <template #footer>
     <el-button type="primary" @click="btnPreview = !btnPreview">{{ btnPreview ? '隐藏预览' : '预览效果' }}</el-button>
-    <el-button type="danger" @click="handleCancel">取消</el-button>
-    <el-button type="primary" @click="handleSubmit" :loading="loading">创建文章</el-button>
+    <el-button type="danger" @click="handleClose">取消</el-button>
+    <el-button type="primary" @click="handleSubmit" :loading="loading">{{ isEdit ? '更新' : '新增' }}</el-button>
   </template>
   </el-dialog>
 </template>
 
 <script setup>
-import { computed,reactive,ref,nextTick } from "vue"
+import { computed,reactive,ref,nextTick,watch } from "vue"
 import { ElMessage } from 'element-plus'
-import { uploadFile,createArticle } from "@/api/admin";
+import { uploadFile,createArticle,updateArticle } from "@/api/admin";
 import {fileBaseUrl} from "@/config/index.js"
 import RichTextEditor from "@/components/RichTextEditor.vue"
 const props = defineProps({
@@ -82,8 +82,37 @@ const props = defineProps({
     success: {
         type: Function,
         default: ()=>{}
+    },
+    article :{
+        type: Object,
+        default: null,
     }
 })
+const formData = reactive({
+    "title": "",
+    "content": "",
+    "coverImage": "",
+    "categoryId": "",
+    "summary": "",
+    "tags": "",
+    "id": ""
+})
+watch(() => props.article,(newVal) => {
+    if (newVal) {
+        nextTick(()=>{
+        Object.assign(formData,newVal)
+        businessId.value = newVal.id
+        imgUrl.value = `${fileBaseUrl}${newVal.coverImage}`
+        })
+    } else {
+        // 新增模式：清空残留的编辑数据
+        Object.assign(formData, { title:'', content:'', coverImage:'', categoryId:'', summary:'', tags:'', id:'' })
+        formData.tagArray = []
+        businessId.value = null
+        imgUrl.value = ''
+    }
+})
+
 const emit = defineEmits(['update:modelValue','success'])
 const dialogVisible = computed({
     get() {
@@ -93,15 +122,7 @@ const dialogVisible = computed({
         emit('update:modelValue', val)
     }
 })
-const formData = reactive({
-    "title": "",
-    "content": "",
-    "coverImage": "",
-    "categoryId": 1,
-    "summary": "",
-    "tags": "",
-    "id": ""
-})
+
 const rules = reactive({
     title: [
         { required: true, message: '请输入文章标题', trigger: 'blur' },
@@ -132,10 +153,11 @@ const beforeUpload = (file)=>{
     }
     return true
 }
+const businessId = ref(null)
 const handleUploadRequest = async({file})=>{
-    const businessId = crypto.randomUUID()
+    businessId.value = crypto.randomUUID()
     const fileRes = await uploadFile(file,{
-        businessId: businessId,
+        businessId: businessId.value,
     })
     imgUrl.value = `${fileBaseUrl}${fileRes.filePath}`
     formData.coverImage = fileRes.filePath
@@ -160,8 +182,12 @@ const handleEditorCreated = (editor)=>{
 const formRef = ref()
 const btnPreview = ref(false);
 const loading = ref(false)
-const handleCancel = ()=>{
-    
+const handleClose = ()=>{
+    formRef.value.resetFields()
+    businessId.value = null
+    handleRemove()
+    formData.tagArray = []
+    emit('update:modelValue',false)
 }
 const handleSubmit = ()=>{
     formRef.value.validate((valid,fields)=>{
@@ -172,13 +198,27 @@ const handleSubmit = ()=>{
                 tags: formData.tagArray.join(',')
             }
             delete submitData.tagArray
-            createArticle(submitData).then(res=>{
+            if(!isEdit.value){
+                // 新增模式：提交新增文章
+                submitData.id = businessId.value
+                createArticle(submitData).then(res=>{
                 loading.value = false
                 emit('success')
             })
+            } else{
+                // 编辑模式：提交更新文章
+                updateArticle(props.article.id,submitData).then(res=>{
+                    loading.value = false
+                    emit('success')
+                })
+            }
+           
         }
     })
 }
+const isEdit = computed(()=>{
+    return !!props.article?.id
+})
 </script>
 
 <style lang="scss" scoped>
