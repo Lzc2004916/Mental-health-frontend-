@@ -37,7 +37,6 @@
 <script setup>
 import { ref, reactive, computed, onBeforeUnmount, shallowRef, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import '@wangeditor/editor/dist/css/style.css'
 import { Editor as WangEditor, Toolbar as WangToolbar } from '@wangeditor/editor-for-vue'
 
 // Props
