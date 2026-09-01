@@ -39,3 +39,9 @@ export function deleteArticle(id){
 export function getConsultationPage(params){
     return service.get('/psychological-chat/sessions',{params})
 }
+export function getSeeionDetail(sessionId){
+    return service.get(`/psychological-chat/sessions/${sessionId}/messages`)
+}
+export function getEmotionalLogPage(params){
+    return service.get('/emotion-diary/admin/page',{params})
+}
