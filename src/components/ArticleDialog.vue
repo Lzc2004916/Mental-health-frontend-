@@ -97,6 +97,26 @@ const formData = reactive({
     "tags": "",
     "id": ""
 })
+const rules = reactive({
+    title: [
+        { required: true, message: '请输入文章标题', trigger: 'blur' },
+        { max: 200, message: '文章标题最多200个字符', trigger: 'blur' }
+    ],
+    categoryId: [
+        { required: true, message: '请选择分类', trigger: 'change' }
+    ],
+    summary: [
+        { max: 1000, message: '文章摘要最多1000个字符', trigger: 'blur' }
+    ],
+})
+const imgUrl = ref('')
+const businessId = ref(null)
+const commonTags = [
+'情绪管理', '焦虑', '抑郁', '压力', '睡眠',
+'冥想', '正念', '放松', '心理健康', '自我成长',
+'人际关系', '工作压力', '学习方法', '生活技巧'
+]
+const emit = defineEmits(['update:modelValue','success'])
 watch(() => props.article,(newVal) => {
     if (newVal) {
         nextTick(()=>{
@@ -112,8 +132,6 @@ watch(() => props.article,(newVal) => {
         imgUrl.value = ''
     }
 })
-
-const emit = defineEmits(['update:modelValue','success'])
 const dialogVisible = computed({
     get() {
         return props.modelValue
@@ -123,24 +141,6 @@ const dialogVisible = computed({
     }
 })
 
-const rules = reactive({
-    title: [
-        { required: true, message: '请输入文章标题', trigger: 'blur' },
-        { max: 200, message: '文章标题最多200个字符', trigger: 'blur' }
-    ],
-    categoryId: [
-        { required: true, message: '请选择分类', trigger: 'change' }
-    ],
-    summary: [
-        { max: 1000, message: '文章摘要最多1000个字符', trigger: 'blur' }
-    ],
-})
-const commonTags = [
-'情绪管理', '焦虑', '抑郁', '压力', '睡眠',
-'冥想', '正念', '放松', '心理健康', '自我成长',
-'人际关系', '工作压力', '学习方法', '生活技巧'
-]
-const imgUrl = ref('')
 const beforeUpload = (file)=>{
     if(!file.type.startsWith('image/')){
         ElMessage.error('请上传图片文件')
@@ -153,7 +153,6 @@ const beforeUpload = (file)=>{
     }
     return true
 }
-const businessId = ref(null)
 const handleUploadRequest = async({file})=>{
     businessId.value = crypto.randomUUID()
     const fileRes = await uploadFile(file,{

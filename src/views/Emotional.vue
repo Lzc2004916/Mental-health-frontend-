@@ -3,7 +3,7 @@
     <PageHead title="情感日志" />
     <TableSearch :formItem="formItem" @search="handleSearch" />
     <el-table :data="tableData" style="width: 100%">
-        <el-table-column prop="id" label="用户ID" width="80" />
+        <el-table-column prop="userId" label="用户ID" width="80" />
         <el-table-column  label="会话id" width="80" >
           <template #default="scope">
             <el-avatar :size="48">
@@ -32,7 +32,7 @@
           <el-table-column  label="操作" width="240">
         <template #default="scope">
           <el-button type="primary" text @click="viewSessionDetail(scope.row)">详情</el-button>
-          <el-button type="danger" text>删除</el-button>
+          <el-button type="danger" text @click="handleDelete(scope.row)">删除</el-button>
                  </template>
       </el-table-column>
     </el-table>
@@ -106,13 +106,25 @@
           </div>
           <div class="ai-improvements-section">
             <h5>改善建议</h5>
-            <ul class="improvements-list">
-              <li v-for="(item, idx) in (aiDate.improvementSuggestion || [])" :key="idx">{{ item }}</li>
+            <ul class="improvements-list" v-if="aiDate.improvementSuggestion && aiDate.improvementSuggestion.length">
+              <li v-for="(item, index) in aiDate.improvementSuggestion" :key="index">{{ item }}</li>
             </ul>
+            <div v-else class="suggestion-content">无</div>
           </div>
         </div>
+        
+      </div>
+      <div class="detail-section">
+        <h4>时间信息</h4>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="创建时间">{{ currentDetail.createdAt }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间">{{ currentDetail.updatedAt }}</el-descriptions-item>
+        </el-descriptions>
       </div>
     </div>
+    <template #footer>
+      <el-button @click="detailDialogVisible = false">关闭</el-button>
+    </template>
     </el-dialog>
   </div>
 </template>
@@ -121,7 +133,8 @@
 import { ref,onMounted,reactive } from 'vue';
 import PageHead from '@/components/PageHead.vue';
 import TableSearch from '@/components/TableSearch.vue';
-import { getEmotionalLogPage } from "@/api/admin"
+import { getEmotionalLogPage,deleteEmotionalLog } from "@/api/admin"
+import { ElMessageBox,ElMessage } from 'element-plus'
 const getEmotionTagType = (emotion) => {
   const emotionTypes = {
     '快乐': 'success',
@@ -218,8 +231,19 @@ const viewSessionDetail = (row)=>{
   }else{
     aiDate.value = {}
   }
+  
   detailDialogVisible.value = true
-  console.log(row);
+}
+const handleDelete = (row)=>{
+  ElMessageBox.confirm('确认删除该条记录吗？', '删除确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'danger'
+  }).then(async () => {
+    await deleteEmotionalLog(row.id)
+    ElMessage({ message: '删除成功', type: 'success' })
+    handleSearch()
+  }).catch(() => {})
 }
 </script>
 

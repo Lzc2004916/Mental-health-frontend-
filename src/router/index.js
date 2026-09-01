@@ -37,6 +37,14 @@ const backendRouter = [
                     title:'情感日志',
                     icon:'User'
                 }
+            },
+            {
+                path: 'practice',
+                component:()=>import('@/test/PracticeParent.vue'),
+                meta:{
+                    title:'练习题',
+                    icon:'Edit'
+                }
             }
         ]
     },
