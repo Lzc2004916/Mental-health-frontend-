@@ -48,3 +48,9 @@ export function getEmotionalLogPage(params){
 export function deleteEmotionalLog(id){
     return service.delete(`/emotion-diary/admin/${id}`)
 }
+export function getAnalyticsOverview(){
+    return service.get('/data-analytics/overview')
+}
+export function logout(){
+    return service.post('/user/logout')
+}

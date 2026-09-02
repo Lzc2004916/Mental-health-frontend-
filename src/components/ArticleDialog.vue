@@ -118,6 +118,7 @@ const commonTags = [
 ]
 const emit = defineEmits(['update:modelValue','success'])
 watch(() => props.article,(newVal) => {
+    console.log(newVal);
     if (newVal) {
         nextTick(()=>{
         Object.assign(formData,newVal)

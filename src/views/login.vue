@@ -53,9 +53,9 @@ const rules = reactive({
         {required: true, message: '请输入密码', trigger: 'blur'}
     ]
 })
-const submitForm = async(formEl)=>{
-    if(!formEl) return
-    await formEl.validate(async (valid,fields)=>{
+const submitForm = async(ruleFormRef)=>{
+    if(!ruleFormRef) return
+    await ruleFormRef.validate(async (valid,fields)=>{
         if(valid){
            const data = await login(formData)
            if(!data.token){
