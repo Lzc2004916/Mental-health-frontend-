@@ -10,7 +10,7 @@
             <router-link to="/consultation" class="nav-link" v-if="isLogin">AI咨询</router-link>
             <router-link to="/emotion-diary" class="nav-link" v-if="isLogin">情绪日志</router-link>
             <router-link to="/knowledge" class="nav-link">知识库</router-link>
-            <el-button class="logout-btn" @click="" v-if="isLogin">退出登录</el-button>
+            <el-button class="logout-btn" @click="handleLogout" v-if="isLogin">退出登录</el-button>
             <template v-else>
                 <router-link to="/auth/login" class="nav-link">登录</router-link>
                  <router-link to="/auth/register" class="nav-link">
@@ -32,12 +32,28 @@
 
 <script setup>
 import { ref,onMounted } from 'vue';
+import { useRouter } from 'vue-router'
+import {ElMessageBox,ElMessage} from 'element-plus'
+
+const router = useRouter();
 
 const logoImg = new URL('@/assets/images/机器人.png', import.meta.url).href
 const isLogin = ref(false)
 onMounted(()=>{
     isLogin.value = localStorage.getItem('token') ? true : false
 })
+const handleLogout = ()=>{
+    ElMessageBox.confirm('确定退出登录吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+    }).then(() => {
+        ElMessage.success('退出登录成功')
+        localStorage.removeItem('token')
+        localStorage.removeItem('userInfo')
+        router.push('/auth')
+    })
+}
 </script>
 
 <style lang="scss" scoped>

@@ -2,11 +2,11 @@
   <div class="container">
     <div class="title">
         <div class="back-home">
-        <el-icon>
-            <Back />
-        </el-icon>
-            <span>返回首页</span>
-    </div>
+            <router-link to="/" class="back-link">
+                <el-icon><Back /></el-icon>
+                <span>返回首页</span>
+            </router-link>
+        </div>
     <div class="title-text">
         <h2>登录您的账户</h2>
         <p>请输入您的登录信息</p>
@@ -66,7 +66,8 @@ const submitForm = async(ruleFormRef)=>{
            //根据用户角色决定跳转路径
            if(data.userInfo.userType === 2){
                 router.push('/back/dashboard')
-           }else{
+           }else if(data.userInfo.userType === 1){
+                router.push('/')
            }
         }
     })
@@ -78,7 +79,19 @@ const submitForm = async(ruleFormRef)=>{
     width: 384px;
     .title{
         .back-home{
-            margin-bottom: 50px;
+            margin-bottom: 40px;
+            .back-link{
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 14px;
+                color: #909399;
+                text-decoration: none;
+                transition: color 0.2s ease;
+                &:hover{
+                    color: #409eff;
+                }
+            }
         }
         .title-text{
             text-align: center;

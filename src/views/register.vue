@@ -31,13 +31,7 @@
       <el-form-item label="确认密码" prop="confirmPassword">
         <el-input v-model="formdata.confirmPassword" placeholder="请输入确认密码" size="large" type="password" show-password />
       </el-form-item>
-      <el-form-item label="性别" prop="gender">
-        <el-radio-group v-model="formdata.gender" size="large">
-          <el-radio label="male">男</el-radio>
-          <el-radio label="female">女</el-radio>
-        </el-radio-group>
-      </el-form-item>
-      <el-button class="btn" type="primary" size="large" @click="submitForm(ruleFormRef)">创建用户</el-button>
+      <el-button class="btn" type="primary" size="large" @click="submitForm">创建用户</el-button>
       </el-form>
        <div class="footer">
             <p>已经有账户？<router-link to="/auth/login">去登录</router-link></p>
@@ -48,6 +42,10 @@
 
 <script setup>
 import { ref, reactive, nextTick } from "vue"
+import { addUser } from "@/api/frontend";
+import {ElMessage} from 'element-plus'
+import { useRouter } from "vue-router";
+const router = useRouter()
 const formdata = reactive({
     username: '',
     email: '',
@@ -55,7 +53,8 @@ const formdata = reactive({
     phone: '',
     password: '',
     confirmPassword: '',
-    gender: ''
+    gender: 0,
+    userType: 1
 })
 const ruleFormRef = ref()
 const rules = reactive({
@@ -78,8 +77,18 @@ const rules = reactive({
     {required: true, message: '请输入确认密码', trigger: 'blur'}
   ],
 })
-const submitForm = (ruleFormRef)=>{
-  if(!ruleFormRef) return
+const submitForm = ()=>{
+  if(!ruleFormRef.value) return
+  ruleFormRef.value.validate(async(valid)=>{
+    if(!valid) return
+    try{
+      await addUser(formdata)
+      ElMessage.success('注册成功')
+      router.push('/auth/login')
+    }catch(e){
+      // 失败提示（如"用户名已存在"）已由拦截器统一弹出
+    }
+  })
 }
 </script>
 

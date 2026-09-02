@@ -1,5 +1,5 @@
 <template>
-  <el-aside :width="isCollapse ? '64px' : '264px'">
+  <el-aside :width="isCollapse ? '64px' : '264px'" class="sidebar-aside">
       <el-menu
         :collapse-transition="false"
         default-active="2"
@@ -8,10 +8,12 @@
       >
       <div class="brand">
         <el-image class="brand-image" :src="iconUrl" alt="logo /"></el-image>
-        <div class="info-card" v-show="!isCollapse">
+        <transition name="brand-fade">
+          <div class="info-card" v-show="!isCollapse">
             <h1 class="brand-title">心理健康AI助手</h1>
             <p class="brand-subtitle">管理后台</p>
-        </div>
+          </div>
+        </transition>
       </div>
         <el-menu-item @click="selectMenu" v-for="item in router.options.routes[0].children" :key="item.path" :index="item.path">
           <el-icon><component :is="item.meta.icon"></component></el-icon>
@@ -35,6 +37,18 @@ const selectMenu = (key) => {
 </script>
 
 <style lang="scss" scoped>
+.sidebar-aside {
+  transition: width 0.3s ease;
+  overflow: hidden;
+}
+.brand-fade-enter-active,
+.brand-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.brand-fade-enter-from,
+.brand-fade-leave-to {
+  opacity: 0;
+}
 .menu-style{
     height: 100%;
 }
@@ -68,6 +82,7 @@ const selectMenu = (key) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  white-space: nowrap; /* 过渡期间文字不换行、不变形 */
 }
 .brand-title {
   font-size: 24px;

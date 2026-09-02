@@ -72,6 +72,7 @@ border-bottom: 1px solid #e5e7eb;
     font-size: 20px;
     font-weight: 500;
     color: #292b30;
+    margin-left: 10px;
 }
 }
 }

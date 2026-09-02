@@ -44,6 +44,7 @@ const backendRouter = [
   },
   {
     path: "/auth",
+    redirect: "/auth/login",
     component: AuthLayout,
     children: [
       {
@@ -65,7 +66,7 @@ const backendRouter = [
 ];
 const frontendRouter = [
   {
-    path: "/",
+    path: "",
     component: FrontendLayou,
     children: [
       {
@@ -115,7 +116,11 @@ router.beforeEach((to, from, next) => {
         next("/back/dashboard");
       }
     } else if (userInfo.userType == 1) {
-      TODO: 处理普通用户路由;
+      if(to.path.startsWith("/back") || to.path.startsWith("/auth")){
+        next("/");
+      }else{
+        next();
+      }
     }
   } else {
     if (to.path.startsWith("/back")) {
