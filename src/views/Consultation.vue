@@ -62,6 +62,7 @@
       </div>
       <!-- 聊天内容 -->
       <div class="chat-messages">
+        <!-- 欢迎消息 -->
         <div class="message-item ai-message" v-if="messages.length === 0">
           <div class="message-avatar">
             <el-image :src="robotImg" style="width: 18px; height: 18px;"></el-image>
@@ -106,17 +107,26 @@
       <div class="chat-input">
         <div class="input-container">
           <!--input输入-->
-          <el-input v-model="userMessage" :disabled="isAiTyping" placeholder="请输入您的问题" type="textarea" :rows="3"
-            resize="none" clearable @keydown.enter.exact.prevent="handleKeyDown" class="message-input"></el-input>
+          <el-input v-model="userMessage" 
+          :disabled="isAiTyping" 
+          placeholder="请输入您的问题" 
+          type="textarea"
+           :rows="3"
+            resize="none" 
+            clearable 
+            @keydown.enter.exact.prevent="handleKeyDown" 
+            class="message-input"
+            />
           <div class="input-footer">
-            按 Enter 发送，Shift + Enter 换行
+            <span>按 Enter 发送，Shift + Enter 换行</span>
+            <span>{{ userMessage.length }}/500</span>
           </div>
         </div>
-        <button type="primary" class="send-btn" @click="sendMessage">
+        <el-button type="primary" class="send-btn" @click="sendMessage" :disabled="!userMessage.trim() || !userMessage.length > 500 || isAiTyping ">
           <el-icon>
             <Promotion />
           </el-icon>
-        </button>
+        </el-button>
       </div>
     </div>
   </div>
@@ -128,6 +138,7 @@ import { ref, reactive, onMounted } from "vue"
 import { startSession, getSessionList, deleteSession, getSessionDetail } from "@/api/frontend.js"
 import { ElMessage, ElMessageBox } from "element-plus"
 import MarkdownRenderer from "@/components/MarkdownRenderer.vue"
+import { fetchEventSource } from '@microsoft/fetch-event-source';
 const robotImg = new URL('@/assets/images/robot-fill.png', import.meta.url).href
 const likeImg = new URL('@/assets/images/like.png', import.meta.url).href
 const userImg = new URL('@/assets/images/users.png', import.meta.url).href
@@ -180,34 +191,70 @@ const startNewSession = async (content) => {
   } else {
     sessionParams.sessionTitle = currentSession.value.sessionTitle
   }
-  // 先在本地显示用户消息，提供即时反馈
-  messages.value = [{
-    id: Date.now(),
-    senderType: 1,
-    senderTypeDesc: '用户',
-    content: content,
-    createdAt: new Date().toLocaleString()
-  }]
-  try {
-    const res = await startSession(sessionParams)
-    // 更新 currentSession
+  startNewSession(sendMessage).then(res =>{
+    console.log(res)
     const sessionData = {
       sessionId: res.sessionId,
       status: res.status,
       sessionTitle: sessionParams.sessionTitle
     }
-    currentSession.value = sessionData
-    // 刷新会话列表
-    await getSessionPage()
-    // 重新获取消息详情（目前后端只返回用户消息）
-    if (res.sessionId) {
-      handleSessionClick({ id: res.sessionId.replace(/^session_/, '') })
+    if(currentSession.value && userMessage.value.status === 'TEMP'){
+      Object.assign(currentSession.value, sessionData)
+    }else{
+      currentSession.value = sessionData
     }
-  } catch (err) {
-    // 失败时清空本地乐观插入的消息
-    messages.value = []
-    ElMessage.error('发送失败，请重试')
+    getSessionPage(currentSession.value.sessionId,content)
+    //开始流式对话
+    
+  })
+}
+const ctrl = new AbortController();
+const startAIResponse = async (sessionId,content) => {
+  if(isAiTyping.value) return
+  isAiTyping.value = true
+  const aiMessage = {
+    id: `ai_${Date.now()}_${Math.random().toString(36).substring(2,9)}`,
+    senderType: 2,
+    content: content,
+    createdAt: new Date().toLocaleString()
   }
+  messages.value.push(aiMessage)
+  fetchEventSource("/api/psychological-chat/stream",{
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'token': localStorage.getItem('token'),
+        'Accept' : 'text/event-stream'
+    },
+    body: JSON.stringify({
+      sessionId: sessionId,
+      userMessage: content
+    }),
+    signal: ctrl.signal,
+    onopen: (response) => {
+      console.log(response)
+      if(response.headers.get('Content-Type') !== 'text/event-stream'){
+        ElMessage.error('服务器返回的不是流式数据')
+      }
+    },
+    onmessage :(event)=>{
+      const raw = event.data.trim()
+      if (!raw) return
+      const eventName = event.event
+      const aiMessage = messages.value[messages.value.length - 1]
+      if(eventName === 'done'){
+        isAiTyping.value = false
+        ctrl.abort()
+      }
+      const palyload = JSON.parse(raw)
+      const ok = String(palyload.code) === '200'
+      if(ok && palyload.data && palyload.data.content){
+        aiMessage.content += palyload.data.content
+      }else if(!ok){
+        //TODO 处理错误情况
+      }
+    }
+  })
 }
 const getSessionPage = async () => {
   const res = await getSessionList({
@@ -218,17 +265,15 @@ const getSessionPage = async () => {
 }
 const handleSessionClick = async (session) => {
   const res = await getSessionDetail(session.id)
-  // 后端接口直接返回消息数组
-  messages.value = Array.isArray(res) ? res : []
-  // 同步更新 currentSession，确保发送消息时状态正确
-  const matched = sessionList.value.find(s => s.id === session.id)
-  if (matched) {
-    currentSession.value = {
-      sessionId: session.id,
+  console.log(res);
+  messages.value = res
+  const sessionData = {
+     sessionId: "session_" + session.id,
       status: 'ACTIVE',
-      sessionTitle: matched.sessionTitle
-    }
+      sessionTitle: session.sessionTitle
   }
+  currentSession.value = sessionData
+  
 }
 const handleDeleteSession = async (sessionId) => {
   ElMessageBox.confirm('确认删除该会话吗？', '提示', {
