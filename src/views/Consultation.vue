@@ -155,46 +155,59 @@ onMounted(() => {
 })
 const handleKeyDown = (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    sendMessage()
   }
 }
 const sendMessage = () => {
-  if (!userMessage.value.trim) return
+  if (!userMessage.value.trim()) return
   if (isAiTyping.value) {
-    ElMessage.error('AI助手正在输入中，请稍后。。')
+    ElMessage.error('AI助手正在输入中，请稍后。')
     return
   }
-  const messages = userMessage.value.trim()
+  const content = userMessage.value.trim()
   userMessage.value = ''
-  //如果没有会话或者是临时会话，提示用户先创建会话
   if (currentSession.value.status === 'TEMP') {
-    startNewSession(messages)
-    return
+    startNewSession(content)
   }
 }
-const startNewSession = async (messages) => {
+const startNewSession = async (content) => {
   const sessionParams = {
-    initialMessage: messages
+    initialMessage: content
   }
   if (currentSession.value.sessionTitle === '新会话') {
     sessionParams.sessionTitle = `宁渡AI助手 - ${new Date().toLocaleString()}`
   } else {
-    //如果是历史会话
     sessionParams.sessionTitle = currentSession.value.sessionTitle
   }
-  const res = await startSession(sessionParams)
-  //将会话数据赋值给currentSession.value
-  const sessionData = {
-    sessionId: res.sessionId,
-    status: res.status,
-    sessionTitle: sessionParams.sessionTitle
-  }
-  if (currentSession.value && currentSession.value.status === 'TEMP') {
-    Object.assign(currentSession.value, sessionData)
-  }else{
+  // 先在本地显示用户消息，提供即时反馈
+  messages.value = [{
+    id: Date.now(),
+    senderType: 1,
+    senderTypeDesc: '用户',
+    content: content,
+    createdAt: new Date().toLocaleString()
+  }]
+  try {
+    const res = await startSession(sessionParams)
+    // 更新 currentSession
+    const sessionData = {
+      sessionId: res.sessionId,
+      status: res.status,
+      sessionTitle: sessionParams.sessionTitle
+    }
     currentSession.value = sessionData
+    // 刷新会话列表
+    await getSessionPage()
+    // 重新获取消息详情（目前后端只返回用户消息）
+    if (res.sessionId) {
+      handleSessionClick({ id: res.sessionId.replace(/^session_/, '') })
+    }
+  } catch (err) {
+    // 失败时清空本地乐观插入的消息
+    messages.value = []
+    ElMessage.error('发送失败，请重试')
   }
-  //更新会话列表
-  getSessionPage()
 }
 const getSessionPage = async () => {
   const res = await getSessionList({
@@ -204,10 +217,18 @@ const getSessionPage = async () => {
   sessionList.value = res.records
 }
 const handleSessionClick = async (session) => {
-  getSessionDetail(session.id).then(res => {
-    console.log(res)
-    messages.value = res
-  })
+  const res = await getSessionDetail(session.id)
+  // 后端接口直接返回消息数组
+  messages.value = Array.isArray(res) ? res : []
+  // 同步更新 currentSession，确保发送消息时状态正确
+  const matched = sessionList.value.find(s => s.id === session.id)
+  if (matched) {
+    currentSession.value = {
+      sessionId: session.id,
+      status: 'ACTIVE',
+      sessionTitle: matched.sessionTitle
+    }
+  }
 }
 const handleDeleteSession = async (sessionId) => {
   ElMessageBox.confirm('确认删除该会话吗？', '提示', {
