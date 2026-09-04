@@ -22,7 +22,7 @@
     <div class="main-container">
         <router-view></router-view>
     </div>
-    <div class="footer-container">
+    <div class="footer-container" v-if="footerShow">
         <div class="footer-bottom">
             <p>欢迎来到心理健康AI助手 &copy; 2026</p>
         </div>
@@ -31,14 +31,17 @@
 </template>
 
 <script setup>
-import { ref,onMounted } from 'vue';
-import { useRouter } from 'vue-router'
+import { ref,onMounted,computed } from 'vue';
+import { useRouter,useRoute } from 'vue-router'
 import {ElMessageBox,ElMessage} from 'element-plus'
 
 const router = useRouter();
+const route = useRoute();
 
 const logoImg = new URL('@/assets/images/机器人.png', import.meta.url).href
 const isLogin = ref(false)
+// 只有首页显示 footer，路由切换自动响应
+const footerShow = computed(() => route.path === '/')
 onMounted(()=>{
     isLogin.value = localStorage.getItem('token') ? true : false
 })
@@ -58,11 +61,16 @@ const handleLogout = ()=>{
 
 <style lang="scss" scoped>
 .frontend-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
     background-color: #fff;
 
     .navbar-container {
+        flex-shrink: 0;
         max-width: 1200px;
-        height: 100%;
+        width: 100%;
         margin: 0 auto;
         padding: 10px;
         display: flex;
@@ -98,12 +106,17 @@ const handleLogout = ()=>{
         }
     }
 
+    .main-container {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
     .footer-container {
+        flex-shrink: 0;
         background: #1f2937;
         color: white;
         padding: 15px 0;
-        margin-top: auto;
-
         .footer-bottom {
             max-width: 1200px;
             margin: 0 auto;

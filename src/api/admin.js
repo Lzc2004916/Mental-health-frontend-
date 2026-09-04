@@ -54,6 +54,4 @@ export function getAnalyticsOverview(){
 export function logout(){
     return service.post('/user/logout')
 }
-export function addUser(data){
-    return service.post('/user/add',data)
-}
+

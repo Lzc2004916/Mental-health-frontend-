@@ -39,12 +39,11 @@ const robotImg = new URL('@/assets/images/robot-fill.png',import.meta.url).href
   position: relative;
   background: linear-gradient(135deg, rgb(74, 156, 140) 0%, rgb(61, 138, 122) 100%);
   color: #fff;
-  height: calc(100vh - 285px);
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding-bottom: 161px;
 
   // 顶部柔光装饰
   .bg-glow {
