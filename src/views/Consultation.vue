@@ -12,6 +12,56 @@
           <span>在线服务中</span>
         </div>
       </div>
+            <!-- 情绪花园 -->
+             <div class="emotion-garden">
+              <div class="garden-header">
+                <div class="garden-title">
+                  情绪花园
+                </div>
+              </div>
+              <div class="emotion-info">
+                <div class="emotion-name">{{ currentEmotion.primaryEmotion }}</div>
+                <div class="emotion-score">{{ currentEmotion.emotionScore }}</div>
+              </div>
+              <div class="warm-tips">
+                <div class="emotion-status-text">
+                  <span class="status-label">今天感觉</span>
+                  <span class="status-emotion">{{ currentEmotion.isNegative ? '需要关注' : '很不错' }}</span>
+                </div>
+                <div class="emotion-intensity">
+                  <span class="intensity-dots">
+                    <span v-for="dot in 3" :key="dot" class="dot" :class="{'active':getIntensityClass(currentEmotion.emotionScore) >= dot}"></span>
+                  </span>
+                  <span class="intensity-text">{{ getEiskText(currentEmotion.riskLevel) }}</span>
+                </div>
+              <!-- 温暖建议卡片 -->
+               <div class="warm-suggestion">
+                <div class="suggestion-icon">❤</div>
+                <div class="suggestion-content" v-if="currentEmotion.suggestion">
+                  <div class="suggestion-title">给你得小建议</div>
+                  <div class="suggestion-title">{{ currentEmotion.suggestion }}</div>
+                </div>
+               </div>
+               <!-- 治愈行动 -->
+                <div class="healing-actions" v-if="currentEmotion.improvementSuggestions.length > 0">
+                  <div class="actions-title">治愈小行动</div>
+                  <div class="actions-list">
+                    <div class="action-item" v-for="action in currentEmotion.improvementSuggestions" :key="action">
+                      <div class="action-icon">👉</div>
+                      <div class="acion-text">{{ action }}</div>
+                    </div>
+                  </div>
+                </div>
+                <!-- 风险提示 -->
+                 <div class="risk-notice" v-if="currentEmotion.isNegative && currentEmotion.riskLevel > 1">
+                  <div class="notice-icon">⚠️</div>
+                  <div class="notice-content">
+                    <div class="notice-title">风险提示</div>
+                    <div class="notice-text">{{ currentEmotion.riskDescription }}</div>
+                  </div>
+                 </div>
+              </div>
+             </div>
       <!-- 会话列表 -->
       <div class="session-history">
         <h4 class="history-title">会话列表</h4>
@@ -135,7 +185,7 @@
 <script setup>
 import { Clock, Promotion } from "@element-plus/icons-vue"
 import { ref, reactive, onMounted } from "vue"
-import { startSession, getSessionList, deleteSession, getSessionDetail } from "@/api/frontend.js"
+import { startSession, getSessionList, deleteSession, getSessionDetail,getSeeionEmotion } from "@/api/frontend.js"
 import { ElMessage, ElMessageBox } from "element-plus"
 import MarkdownRenderer from "@/components/MarkdownRenderer.vue"
 import { fetchEventSource } from '@microsoft/fetch-event-source';
@@ -159,11 +209,9 @@ const createNewFrontendSession = () => {
     sessionTitle: '新会话'
   }
   currentSession.value = newSession
+  messages.value = []
 }
-onMounted(() => {
-  createNewFrontendSession()
-  getSessionPage()
-})
+
 const handleKeyDown = (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
@@ -178,52 +226,58 @@ const sendMessage = () => {
   }
   const content = userMessage.value.trim()
   userMessage.value = ''
+   //添加初始用户消息
+  messages.value.push({
+    id:Date.now(),
+    senderType: 1,
+    content,
+    createdAt: new Date().toLocaleString() 
+  })
   if (currentSession.value.status === 'TEMP') {
     startNewSession(content)
+  }else{
+    //发送消息给后端
+    startAIResponse(currentSession.value.sessionId,content)
   }
 }
 const startNewSession = async (content) => {
   const sessionParams = {
     initialMessage: content
   }
-  if (currentSession.value.sessionTitle === '新会话') {
-    sessionParams.sessionTitle = `宁渡AI助手 - ${new Date().toLocaleString()}`
-  } else {
-    sessionParams.sessionTitle = currentSession.value.sessionTitle
+  sessionParams.sessionTitle = currentSession.value.status === 'TEMP'
+  ? `宁渡AI助手 - ${new Date().toLocaleString()}`
+  : currentSession.value.sessionTitle
+
+  const res = await startSession(sessionParams)
+  const sessionData = {
+    sessionId: res.sessionId,
+    status: res.status,
+    sessionTitle: sessionParams.sessionTitle
   }
-  startNewSession(sendMessage).then(res =>{
-    console.log(res)
-    const sessionData = {
-      sessionId: res.sessionId,
-      status: res.status,
-      sessionTitle: sessionParams.sessionTitle
-    }
-    if(currentSession.value && userMessage.value.status === 'TEMP'){
-      Object.assign(currentSession.value, sessionData)
-    }else{
-      currentSession.value = sessionData
-    }
-    getSessionPage(currentSession.value.sessionId,content)
-    //开始流式对话
-    
-  })
+  if (currentSession.value && currentSession.value.status === 'TEMP') {
+    Object.assign(currentSession.value,sessionData)
+  }else{
+    currentSession.value = sessionData
+  }
+  getSessionPage()
+ 
+  startAIResponse(sessionData.sessionId,content)
 }
 const ctrl = new AbortController();
 const startAIResponse = async (sessionId,content) => {
   if(isAiTyping.value) return
   isAiTyping.value = true
-  const aiMessage = {
+  messages.value.push({
     id: `ai_${Date.now()}_${Math.random().toString(36).substring(2,9)}`,
     senderType: 2,
-    content: content,
-    createdAt: new Date().toLocaleString()
-  }
-  messages.value.push(aiMessage)
+    content: '',
+    createdAt: new Date().toLocaleString()})
+    const aiMessage = messages.value[messages.value.length - 1]
   fetchEventSource("/api/psychological-chat/stream",{
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
-        'token': localStorage.getItem('token'),
+        'Token': localStorage.getItem('token'),
         'Accept' : 'text/event-stream'
     },
     body: JSON.stringify({
@@ -231,30 +285,49 @@ const startAIResponse = async (sessionId,content) => {
       userMessage: content
     }),
     signal: ctrl.signal,
-    onopen: (response) => {
-      console.log(response)
-      if(response.headers.get('Content-Type') !== 'text/event-stream'){
+    onopen: (res) => {
+      if(res.headers.get('Content-Type') !== 'text/event-stream'){
         ElMessage.error('服务器返回的不是流式数据')
       }
     },
     onmessage :(event)=>{
       const raw = event.data.trim()
       if (!raw) return
-      const eventName = event.event
-      const aiMessage = messages.value[messages.value.length - 1]
-      if(eventName === 'done'){
+      if (event.event === 'done') {
         isAiTyping.value = false
         ctrl.abort()
+        loadSessionEmotion(currentSession.value.sessionId)
+        return
       }
-      const palyload = JSON.parse(raw)
-      const ok = String(palyload.code) === '200'
-      if(ok && palyload.data && palyload.data.content){
-        aiMessage.content += palyload.data.content
-      }else if(!ok){
-        //TODO 处理错误情况
+      let payload
+      try {
+        payload = JSON.parse(raw)
+      } catch (error) {
+        return
       }
+      if (String(payload.code) === '200' && payload.data?.content) {
+        aiMessage.content += payload.data.content
+      }else{
+        handleError(payload.message || 'AI回复失败')
+      }
+    },
+    onerror:(err) =>{
+      handleError(err || 'AI回复失败')
+      ctrl.abort()
+      throw err
+    },
+    onclose:()=>{
+      loadSessionEmotion(currentSession.value.sessionId)
     }
   })
+}
+const handleError = (error)=>{
+  const aiMessage = messages.value[messages.value.length - 1]
+  if (aiMessage && aiMessage.sendderType === 2) {
+    aiMessage.content = 'AI回复失败,请重试'
+  }
+  isAiTyping.value = false
+  ElMessage.error(error)
 }
 const getSessionPage = async () => {
   const res = await getSessionList({
@@ -265,15 +338,14 @@ const getSessionPage = async () => {
 }
 const handleSessionClick = async (session) => {
   const res = await getSessionDetail(session.id)
-  console.log(res);
   messages.value = res
+  loadSessionEmotion(session.id)
   const sessionData = {
      sessionId: "session_" + session.id,
       status: 'ACTIVE',
       sessionTitle: session.sessionTitle
   }
   currentSession.value = sessionData
-  
 }
 const handleDeleteSession = async (sessionId) => {
   ElMessageBox.confirm('确认删除该会话吗？', '提示', {
@@ -288,6 +360,49 @@ const handleDeleteSession = async (sessionId) => {
 }
 const formatMessageContent = (content) => {
   return content.replace(/\n/g, '<br>')
+}
+onMounted(() => {
+  createNewFrontendSession()
+  getSessionPage()
+})
+//情绪花园
+const currentEmotion = ref({
+  primaryEmotion: '中性',
+  emotionScore: 50,
+  isNegative: false,
+  intensityLevel: 0,
+  suggestion: '保持积极心态，适当调整情绪',
+  improvementSuggestions:[
+  ]
+})
+const loadSessionEmotion = async (sessionId) => {
+  const id = sessionId.toString().startsWith('session_') ? sessionId : `session_${sessionId}`
+  const res = await getSeeionEmotion(id)
+  console.log(res);
+  currentEmotion.value = res
+}
+const getIntensityClass = (score) => {
+  if(score >= 61){
+    return 3
+  }
+  if(score >= 31){
+    return 2
+  }
+  return 1
+}
+const getEiskText = (level)=>{
+  switch (level) {
+    case 0:
+      return '正常'
+    case 1:
+      return '关注'
+    case 2:
+      return '预警'
+      case 3:
+      return '危机'
+    default:
+      return '正常'
+  }
 }
 </script>
 

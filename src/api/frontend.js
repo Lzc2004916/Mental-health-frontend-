@@ -14,3 +14,6 @@ export function deleteSession(sessionId){
 export function getSessionDetail(sessionId){
     return service.get(`/psychological-chat/sessions/${sessionId}/messages`)
 }
+export function getSeeionEmotion(sessionId){
+    return service.get(`/psychological-chat/session/${sessionId}/emotion`)
+}
